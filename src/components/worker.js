@@ -58,7 +58,10 @@ let prevDate = null
  */
 self.print = function (...args) {
   let kwargs = {}
-  if (typeof args[args.length - 1] === "object") {
+  // easiest fix to deal with empty print output on trailing lists/dicts: 
+  // check that the last argument isn't a pyproxy object 
+  last = args[args.length-1]
+  if (!pyodide.isPyProxy(last) && typeof last === "object") {
     kwargs = args.pop()
   }
   const text = args.join(kwargs?.sep ?? " ") + (kwargs?.end ?? "\n")
