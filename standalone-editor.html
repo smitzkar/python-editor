@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8">
+<!-- to test this, cd to root, run `python3 -m http.server 8000`, open http://localhost:8000/standalone-editor.html -->
+<textarea id="code" rows="12" cols="60">print([1, 2, 3])
+print({"something": 1.0})
+print(None)
+print(False)
+print(1.0)
+print("a\nb")
+# the next two should end up like: x!A-B
+print("x", end="!")
+print("A", "B", sep="-")
+print("all working as expected!")
+
+print("\nwell...")
+print("""a\n    b""") # indentation vanishes! (but whatever)</textarea>
+<button id="run">RUN</button>
+<pre id="out"></pre>
+<script>
+const out = document.getElementById("out")
+document.getElementById("run").onclick = async () => {
+  out.textContent = "loading pyodide...\n"
+  const ts = await (await fetch("src/constants/workerJsSource.ts")).text()
+  const source = atob(ts.match(/atob\("([^"]+)"\)/)[1])   // exactly what useWorker.tsx does
+  const w = new Worker(URL.createObjectURL(new Blob([source], {type: "application/javascript"})))
+  w.onmessage = (e) => {
+    const {type, msg} = e.data
+    if (type === "start_run") out.textContent = ""
+    else if (type === "print_batch") out.textContent += msg.join("")
+    else if (type === "error") out.textContent += "\n[error] " + msg
+    else if (type === "print_done") { out.textContent += "\n--- done ---"; w.terminate() }
+  }
+  w.postMessage({type: "run", msg: {code: document.getElementById("code").value, debug: true}})
+}
+</script>

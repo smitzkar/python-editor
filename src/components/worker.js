@@ -53,18 +53,12 @@ const printBufferManager = (runInIntervals) => {
 
 let prevDate = null
 /**
- * Python print alias when running with Pyodide. include lines
- * `from js import print` and `__builtins__.print = print` to use.
+ * NEW python print alias when running with Pyodide.
+ * Renamed to free `print` as function name.
+ * No longer has javascript touching the formatting, instead python handles it in run() function below
  */
-self.print = function (...args) {
-  let kwargs = {}
-  // easiest fix to deal with empty print output on trailing lists/dicts: 
-  // check that the last argument isn't a pyproxy object 
-  last = args[args.length-1]
-  if (!pyodide.isPyProxy(last) && typeof last === "object") {
-    kwargs = args.pop()
-  }
-  const text = args.join(kwargs?.sep ?? " ") + (kwargs?.end ?? "\n")
+self.printText = function (text) {
+  // turned into a dumb buffer
   printBuffer.push(text)
 
   // If code is in loop, intervalManager doesn't print batches(?)
@@ -123,7 +117,13 @@ ${code
     pass # SyntaxError: EOF - Missing end parentheses at end of code?
 
 import asyncio, sys, traceback
-from js import exit, inputPromise, print, printError, wait
+from js import exit, inputPromise, printText, printError, wait
+
+# let python handle the formatting
+# why chr(10) instead of "/n"? it's complicated (SyntaxErrors galore, due to two string layers)
+def print(*args, sep=None, end=None, file=None, flush=False):
+    printText((" " if sep is None else sep).join(str(a) for a in args)
+              + (chr(10) if end is None else end))
 
 async def input(prompt=None):
     if prompt:
